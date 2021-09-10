@@ -1,11 +1,68 @@
-FROM nvidia/cuda:11.4.1-devel-ubuntu20.04
+FROM nvidia/cuda:11.4.1-devel-ubuntu20.04 as base
+
+ARG PACKAGES="apt-utils \
+        openssh-client \
+        gnupg2 \
+        iproute2 \
+        procps \
+        lsof \
+        htop \
+        net-tools \
+        psmisc \
+        curl \
+        wget \
+        rsync \
+        ca-certificates \
+        unzip \
+        zip \
+        nano \
+        vim-tiny \
+        less \
+        jq \
+        lsb-release \
+        apt-transport-https \
+        dialog \
+        libc6 \
+        libgcc1 \
+        libkrb5-3 \
+        libgssapi-krb5-2 \
+        libicu[0-9][0-9] \
+        liblttng-ust0 \
+        libstdc++6 \
+        zlib1g \
+        locales \
+        sudo \
+        ncdu \
+        man-db \
+        strace \
+        manpages \
+        manpages-dev \
+        init-system-helpers \
+        git \
+        build-essential \
+        python3-pip \
+        software-properties-common \
+        supervisor \
+        libffi-dev \
+        "
+
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-    && apt-get -y install --no-install-recommends python3-pip git curl wget sudo build-essential apt-transport-https lsb-release gnupg 
-    # && curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash && az extension add --name azure-cli-ml
-    && curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null \
-    && echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/azure-cli.list
-    && apt-get update && apt-get -y install --no-install-recommend azure-cli
+    && apt-get -y install --no-install-recommends ${PACKAGES} \
+    && curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash && az extension add --name azure-cli-ml \
     && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
-COPY . /tmp/ctx/
+COPY requirements.txt /tmp/ctx/
 RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/ctx/requirements.txt
+
+
+ADD https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main/script-library/docker-debian.sh /tmp/ctx/
+RUN /tmp/ctx/docker-debian.sh false
+RUN rm -rf /tmp/ctx/
+
+ENTRYPOINT ["/usr/local/share/docker-init.sh"]
+CMD ["sleep", "infinity"]
+
+# run with
+# "runArgs": ["--init"],
+# "mounts": [ "source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind" ],
+# "overrideCommand": false
