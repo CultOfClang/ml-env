@@ -41,9 +41,12 @@ ARG PACKAGES="apt-utils \
         git \
         build-essential \
         python3-pip \
+        python3-numpy \
         software-properties-common \
         supervisor \
         libffi-dev \
+        bash \
+        zsh \
         "
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
@@ -51,16 +54,41 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash && az extension add --name azure-cli-ml \
     && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /tmp/ctx/
+
+
+COPY /dist/base/requirements.txt /tmp/ctx/
 RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/ctx/requirements.txt
 
-
-ADD https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main/script-library/docker-debian.sh /tmp/ctx/
-RUN /tmp/ctx/docker-debian.sh false
 RUN rm -rf /tmp/ctx/
 
+FROM base as basic
+
+FROM base as jupyter
+
+ADD https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main/script-library/docker-debian.sh /tmp/ctx/
+RUN chmod +x /tmp/ctx/docker-debian.sh && /tmp/ctx/docker-debian.sh false
 ENTRYPOINT ["/usr/local/share/docker-init.sh"]
 CMD ["sleep", "infinity"]
+
+COPY /dist/jupyter/requirements.txt /tmp/ctx/
+RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/ctx/requirements.txt
+
+FROM base as scikit-learn
+COPY /dist/scikit-learn/requirements.txt /tmp/ctx/
+RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/ctx/requirements.txt
+
+FROM base as tensorflow
+COPY /dist/tensorflow/requirements.txt /tmp/ctx/
+RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/ctx/requirements.txt
+
+FROM base as pytorch
+COPY /dist/pytorch/requirements.txt /tmp/ctx/
+RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/ctx/requirements.txt
+
+FROM base as aio
+COPY /dist/aio/requirements.txt /tmp/ctx/
+RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/ctx/requirements.txt
+
 
 # run with
 # "runArgs": ["--init"],
